@@ -1,9 +1,9 @@
-## **Sentiment Analysis Dashboard** 🚀
+## **Sentiment Analysis Dashboard**
 A **Streamlit-based dashboard** that fetches company details and reviews using an API, then applies **sentiment analysis** using the **NLTK** library.
 
 ---
 
-## **Features** ✨
+## **Features**
 ✅ Search for a company by name  
 ✅ Fetch company details and reviews via API  
 ✅ Perform **sentiment analysis** (Positive, Negative, Neutral) using **NLTK**  
@@ -12,7 +12,7 @@ A **Streamlit-based dashboard** that fetches company details and reviews using a
 
 ---
 
-## **Installation** ⚙️  
+## **Installation**  
 
 ### **1️⃣ Clone the Repository**  
 ```sh
@@ -33,7 +33,7 @@ pip install -r requirements.txt
 
 ---
 
-## **Usage** ▶️  
+## **Usage**
 
 ### **Run the Streamlit Dashboard**  
 ```sh
@@ -47,7 +47,7 @@ Enter a **company name** in the search box, and the dashboard will:
 
 ---
 
-## **Requirements** 📦  
+## **Requirements**
 Ensure you have the following **Python libraries** installed:  
 
 ```txt
@@ -66,7 +66,7 @@ pip install -r requirements.txt
 
 ---
 
-## **Environment Variables** 🌍  
+## **Environment Variables** 
 Create a `.env` file or set the following **API credentials** in your environment:  
 
 ```sh
