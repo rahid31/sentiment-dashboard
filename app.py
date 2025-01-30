@@ -2,11 +2,17 @@ import pandas as pd
 import requests
 import streamlit as st
 import os
+from dotenv import load_dotenv
 import time
 from nltk.sentiment import SentimentIntensityAnalyzer
 import nltk
+import plotly.express as px
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
 
 nltk.download('vader_lexicon')
+
+load_dotenv()
 
 # Load API credentials
 BASE_URL = os.getenv("baseUrl")
@@ -73,10 +79,36 @@ def calculate_sentiment(reviews):
     # Add the sentiment count as a new column
     reviews['sentiment_count'] = reviews['sentiment_label'].map(sentiment_counts)
 
-    for sentiment, count in sentiment_counts.items():
-        print(f"{sentiment}: {count} reviews")
-
     return reviews
+
+def show_wordcloud(data, colormap="Blues"):
+    wordcloud = WordCloud(
+        background_color=None,
+        mode="RGBA",
+        max_words=50,
+        max_font_size=50,
+        # width=width,
+        # height=height,
+        scale=2,
+        random_state=42,
+        colormap=colormap
+    ).generate(str(data))
+    
+    fig, ax = plt.subplots()
+    ax.imshow(wordcloud, interpolation="bilinear")
+    ax.axis("off")
+    return fig
+
+def display_star_rating(avg_rating):
+    """Display star rating using image icons."""
+    full_star = "https://static-00.iconduck.com/assets.00/star-emoji-512x488-phxasgjk.png"
+    empty_star = "https://www.iconpacks.net/icons/1/free-star-icon-984-thumb.png"
+
+    full_count = int(avg_rating)  # Full stars
+    empty_count = 5 - full_count  # Empty stars
+
+    stars = [full_star] * full_count + [empty_star] * empty_count
+    st.image(stars, width=20)  # Display stars
 
 # Streamlit UI
 st.title("Company Reviews Sentiment Analysis")
@@ -98,7 +130,7 @@ if st.button("Search"):
                 sentiment = calculate_sentiment(reviews)
 
             if not details.empty:
-                st.write("Company Details:")
+                st.subheader("Company Details:")
                 mission = details["overview"].apply(lambda x: x.get("mission", "No mission available.") if isinstance(x, dict) else "No mission available.")
                 description = details["overview"].apply(lambda x: x.get("description", "No description available.") if isinstance(x, dict) else "No description available.")
                 industry = details["primaryIndustry"].apply(lambda x: x.get("industryName", "No name available.") if isinstance(x, dict) else "No name available.")
@@ -140,24 +172,97 @@ if st.button("Search"):
             else:
                 st.write("No details found.")
 
-            if not details.empty:
-                st.dataframe(details)
-            else:
-                st.write("No details found.")
+            # if not details.empty:
+            #     st.dataframe(details)
+            # else:
+            #     st.write("No details found.")
 
             st.write("")
             
             st.write("")
 
             if not reviews.empty:
-                st.write("Reviews:")
+                st.subheader("Reviews:")
                 st.dataframe(reviews)
+
+                with st.container():
+                    cols = st.columns([1, 1])
+
+                    # Display career opportunities average rating
+                    with cols[0]:
+                        career_rating = reviews['careerOpportunitiesRating'].mean().reset_index(name='Average')
+                        career_rating = career_rating['Average'].iloc[0]
+                        st.write(f"Average Career Opportunities Rating: {career_rating}")
+                        display_star_rating(career_rating)
+                    
+                    # Display work life balance average rating
+                    with cols[1]:
+                        balance_rating = reviews['workLifeBalanceRating'].mean().reset_index(name='Average')
+                        balance_rating = balance_rating['Average'].iloc[0]
+                        st.write(f"Average Work Life Balance Rating: {balance_rating}")
+                        display_star_rating(balance_rating)
+
             else:
                 st.write("No reviews found.")
 
             if not sentiment.empty:
-                st.write("Sentiment Analysis:")
+                st.subheader("Sentiment Analysis:")
                 st.dataframe(sentiment)
+
+                with st.container():
+                    cols = st.columns([1, 1, 1])
+
+                    with cols[0]:
+                        # Group sentiment data
+                        sentiment_chart = sentiment.groupby('sentiment_label').size().reset_index(name='Count')
+                        # Create Donut Chart
+                        fig1 = px.pie(sentiment_chart, values="Count", names="sentiment_label", hole=0.4, color="sentiment_label",
+                                    color_discrete_map={"Positive": "green", "Neutral": "gray", "Negative": "red"})
+                        # Display in Streamlit
+                        st.write("Sentiment Label Distribution")
+                        st.plotly_chart(fig1)
+
+                    with cols[1]:
+                        # Group outlook data
+                        outlook_chart = sentiment.groupby('ratingBusinessOutlook').size().reset_index(name='Count')
+                        # Create Donut Chart
+                        fig2 = px.pie(outlook_chart, values="Count", names="ratingBusinessOutlook", hole=0.4, color="ratingBusinessOutlook",
+                                    color_discrete_map={"Positive": "green", "Neutral": "gray", "Negative": "red"})
+                        # Display in Streamlit
+                        st.write("Business Outlook Distribution")
+                        st.plotly_chart(fig2)   
+                    
+                    with cols[2]:
+                        # Group reviews by positions
+                        reviews['jobTitle'] = reviews['jobTitle'].apply(lambda x: x["text"] if isinstance(x, dict) else x)
+                        position_chart = reviews.groupby('jobTitle').size().reset_index(name='Count')
+                        # Create Treemap
+                        fig5 = px.treemap(position_chart, path = ["jobTitle"], values = "Count", color = "Count", color_continuous_scale="Blues")
+                        # Display Treemap
+                        st.write("Position Distribution")
+                        st.plotly_chart(fig5)
+
+                # Group Positive Reviews
+                positive_reviews = sentiment[sentiment['sentiment_label'] == 'Positive']
+                # Group Negative Reviews
+                negative_reviews = sentiment[sentiment['sentiment_label'] == 'Negative']
+                #Display Word Cloud
+                if not positive_reviews.empty:
+                    st.write("")
+                    with st.container():
+                        cols = st.columns([1, 1])
+
+                        with cols[0]:
+                            fig3 = show_wordcloud(positive_reviews["summary"], colormap="Greens")
+                            st.write("Positive Word Cloud")
+                            st.pyplot(fig3)
+                        
+                        with cols[1]:
+                            fig4 = show_wordcloud(negative_reviews["summary"], colormap="Reds")
+                            st.write("Negative Word Cloud")
+                            st.pyplot(fig4)
+                else:
+                    st.warning("No reviews found.")        
             else:
                 st.write("No sentiment analysis found.")
         else:
